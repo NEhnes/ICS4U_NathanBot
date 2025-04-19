@@ -1,0 +1,512 @@
+package bots;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Image;
+
+import arena.BattleBotArena;
+import arena.BotInfo;
+import arena.Bullet;
+//
+// Base Bot class used to build your own bot
+
+/**
+ * Usefull commands
+ * BattleBotArena.SEND_MESSAGE; Sends a message from the message array
+ * BattleBotArena.UP,BattleBotArena.DOWN,BattleBotArena.LEFT,BattleBotArena.RIGHT
+ * Makes the bot move in a direction
+ * BattleBotArena.FIREUP,BattleBotArena.FIREDOWN,BattleBotArena.FIRERIGHT,BattleBotArena.FIRELEFT
+ * current is a variable that stores the current image being drawn.
+ * set current to left, right, down or up to change directional image to be
+ * drawn.
+ **/
+public class nathanBot extends Bot {
+   /**
+    * My name
+    */
+   String name = null;
+
+   /**
+    * My next message or null if nothing to say
+    */
+   String nextMessage = null;
+
+   /**
+    * Array of happy drone messages
+    */
+   private String[] messages = { "YOOOOOO", "Drake > Kendrick", "I am content", "I like to vaccuum",
+         "La la la la la...", "I like squares" };
+
+   /**
+    * Image for drawing
+    */
+   Image up, down, left, right, currentImage;
+
+   /**
+    * For deciding when it is time to change direction
+    */
+   private static int counter = 0;
+   private static int lastShotTicks = 0;
+   private static double currentX, currentY; // LEAVE AS GLOBAL!
+   private static double targetX, targetY = 300; // leave as global
+   private static Bullet[] privBullets; // leave as global
+   private static Bullet closestBullet; // leave as global
+   private static double closestDist = 1000; // leave as global, for time being
+   private static boolean attackMode = false;
+   private static int attackTicks = 0;
+   private static boolean attackDir;
+   private static int attackDuration = 35;
+
+   /**
+    * Current move
+    */
+   private int move = BattleBotArena.RIGHT;
+
+   /**
+    * My last location - used for detecting when I am stuck
+    */
+   private double lastX, lastY;
+   private double lastTargetX, lastTargetY;
+   private static int stuckTicks = 0;
+
+   /**
+    * Draw the current Bot image
+    */
+   public void draw(Graphics g, int x, int y) {
+      g.drawImage(currentImage, x, y, Bot.RADIUS * 2, Bot.RADIUS * 2, null);
+   }
+
+   /**
+    * ----Psuedo Logic---- (outdated as fuck)
+    * updateMyPos()
+    * 
+    * dodgeImmediateDanger()
+    * must be moving in my direction or <___ px away
+    * if so, check proximity to other bullets and move accordingly
+    * return move, end method
+    * 
+    * check if bot within firing scope and shoot
+    *
+    * updateTarget() //(update every ___ ticks) (fewer if close)
+    * determine distribution by quadrant, save pos of nearest one
+    * determine distance to nearest bot in quadrant
+    * combine data and pick a good target
+    * 
+    * check if bot is near and within firing scope
+    * firing scope can be linear up close, but fans out at medium distance
+    * maybe only fire if not directly in front < 30px
+    * fire
+    * lead shots???
+    * 
+    * check if bot <___ pixels away
+    * if yes, commence attack sequence
+    * if no, manage distance and wait for SHOTOK
+    * check shot dist?
+    * set movement direction towards target at diagonal
+    * checkmove to avoid running into bullets
+    * check if bot within 30px in l,r,u,d
+    * check if bullet within 50px l,r,u,d
+    */
+
+   /*******************************************************************************
+    ********* controls movement, messages, and firing ***********
+    *******************************************************************************/
+
+   // _______________ADD BORDER / DEAD BOT AVOIDANCE______________
+   public int getMove(BotInfo me, boolean shotOK, BotInfo[] liveBots, BotInfo[] deadBots, Bullet[] bullets) {
+
+      // update my position
+      currentX = (int) me.getX();
+      currentY = (int) me.getY();
+
+      // update bullet array - my own array so I dont have to pass it around
+      privBullets = bullets;
+
+      // runs if necessary - comment later   //REMOVE ! ATTACKMODE
+      if (!attackMode) {
+         move = DodgeSequence();
+         if (move != 0) {
+            RunCounters();
+            return move;
+         }
+      }
+
+      // retrieves nearest bot
+      int targetBotIndex = TargetBotIndex(liveBots);
+      // update target bot pos
+      targetX = liveBots[targetBotIndex].getX();
+      targetY = liveBots[targetBotIndex].getY();
+
+      // end attack if is over
+      if (attackTicks > attackDuration - 1) {
+         attackTicks = 0;
+         attackMode = false;
+      }
+
+      // continue attack sequence, returns 0 if conditions not met
+      move = Attack(shotOK);
+      if (move != 0) {
+         RunCounters();
+         return move;
+      }
+
+      // checks if another bot is aligned in x/y lines
+      move = CheckForShot(me, liveBots);
+      if (move != 0) {
+         lastShotTicks = 0;
+         RunCounters();
+         return move;
+      }
+
+      System.out.println(attackTicks);
+      if (attackMode) {
+         System.out.println("ATTACKMODE");
+      } else {
+         System.out.println("waiting...");
+      }
+
+      // sets target attack position, on a diagonal to target bot
+      int xTargetingGap = 30;
+      int yTargetingGap = 95;
+      targetX += (targetX > currentX) ? -xTargetingGap : xTargetingGap;
+      targetY += (targetY > currentY) ? -yTargetingGap : yTargetingGap;
+
+      // check if in attack position, commence attack
+      if (!attackMode) { // does not run if attack is in progress
+         int tolerance = 20;
+         if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
+               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY)) {
+            attackMode = true;
+            attackDir = (currentX < targetX) ? false : true;
+            attackTicks = 0;
+         } else {
+            attackMode = false;
+         }
+      }
+
+      move = MoveTo(me, targetX, targetY);
+
+      RunCounters();
+      return move;
+   }
+
+   // ************************************************
+   // ***********---LOGIC---END---********************
+   // ***********--FUNCS---BELOW--********************
+   // ************************************************
+
+   // ----------all good------------
+   private int Attack(boolean shotOK) {
+      if (attackMode == true && attackTicks < attackDuration) {
+         attackTicks++;
+         // if can shoot
+         if (attackTicks > 10 && counter % 10 == 0 && counter != 0 && shotOK) {
+            return (targetY < currentY) ? BattleBotArena.FIREUP : BattleBotArena.FIREDOWN;
+         }
+         // otherwise move
+         else {
+            return (attackDir) ? BattleBotArena.LEFT : BattleBotArena.RIGHT;
+         }
+      }
+      return 0;
+   }
+
+   // -------------------all good-----------
+   private int DodgeSequence() {
+      // Only trigger dodge sequence if there are active bullets
+      if (privBullets.length != 0) {
+
+         // find closest bullet, calc dist.
+         closestBullet = privBullets[GetClosestBullet()[0]];
+         double closestBulletDist = ManhattanDistance(closestBullet.getX(), closestBullet.getY());
+
+         // if in danger, move
+         if (closestBulletDist <= 80 && InMyDirection() == true) {
+            // System.out.println("DANGER DANGER DANGER");
+            // currentImage = up; // danger image
+
+            move = DodgeBullet(closestBullet);
+            if (move != 0) {
+               return move;
+            }
+         }
+      }
+      return 0;
+   }
+
+   // SEEMS LIKE IS WORKING
+   private int DodgeBullet(Bullet closestbullet) { // issue wth dodging bullets from left
+
+      int padding = 35;
+      // if moving up/down
+      if (closestbullet.getYSpeed() != 0) {
+         // if aligned X
+         if (Math.abs((currentX + Bot.RADIUS) - closestBullet.getX()) < Bot.RADIUS + padding) {
+            // System.out.println("X DANGER");
+            // if x danger
+            if (closestBullet.getX() > currentX) {
+               return BattleBotArena.LEFT;
+            } else {
+               return BattleBotArena.RIGHT;
+            }
+         }
+      }
+      // if moving left/right
+      else {
+         // if aligned Y
+         if (Math.abs((currentY + Bot.RADIUS) - closestBullet.getY()) < Bot.RADIUS + padding) {
+            // System.out.println("Y DANGER");
+            // if y danger
+            if (closestBullet.getY() > currentY) {
+               return BattleBotArena.UP;
+            } else {
+               return BattleBotArena.DOWN;
+            }
+         }
+
+      }
+      return 0;
+   }
+
+   // -------------------ALL GOOD----------------
+   private int CheckForShot(BotInfo me, BotInfo[] liveBots) {
+      int shootingInterval = 20;
+      for (int i = 0; i < liveBots.length; i++) {
+         // if aligned vertically
+         if (Math.abs(me.getX() - liveBots[i].getX()) < Bot.RADIUS) {
+            // if has not fired recently
+            if (lastShotTicks > shootingInterval) {
+               // if below target
+               if (me.getY() > liveBots[i].getY()) {
+                  return BattleBotArena.FIREUP;
+               } else // above bot
+               {
+                  return BattleBotArena.FIREDOWN;
+               }
+            }
+         }
+
+         // if aligned horizontally
+         if (Math.abs(me.getY() - liveBots[i].getY()) < Bot.RADIUS) {
+            if (lastShotTicks > shootingInterval) {
+               if (me.getX() > liveBots[i].getX()) {
+                  return BattleBotArena.FIRELEFT;
+               } else {
+                  return BattleBotArena.FIRERIGHT;
+               }
+            }
+         }
+      }
+      return 0;
+   }
+
+   // -------------------ALL GOOD----------------
+   private void RunCounters() { // in a function so that early returns dont skip logic
+      // set images
+      switch (move) {
+         case 1 -> currentImage = down;
+         case 2 -> currentImage = down;
+         case 3 -> currentImage = left;
+         case 4 -> currentImage = right;
+         default -> currentImage = down;
+      }
+
+      counter++;
+      counter = (counter > 100) ? 0 : counter; // reset counter every 100 ticks
+
+      lastShotTicks++;
+
+      lastX = currentX;
+      lastY = currentY;
+      lastTargetX = targetX;
+      lastTargetY = targetY;
+   }
+
+   // -------------------ALL GOOD----------------
+   private static double ManhattanDistance(double objX, double objY) {
+      return Math.abs(currentX - objX) + Math.abs(currentY - objY);
+   }
+
+   // -------------------ALL GOOD----------------
+   private int oppositeMove(int move) {
+      switch (move) {
+         case BattleBotArena.LEFT -> move = BattleBotArena.RIGHT;
+         case BattleBotArena.RIGHT -> move = BattleBotArena.LEFT;
+         case BattleBotArena.UP -> move = BattleBotArena.DOWN;
+         case BattleBotArena.DOWN -> move = BattleBotArena.UP;
+      }
+      return move;
+   }
+
+   // returns an array of two values, the nearest bullet index @ [0], second
+   // nearest index @ [1]
+   // -------------------ALL GOOD----------------
+   private static int[] GetClosestBullet() {
+      int bulletIndex = 0;
+      int secondClosestIndex = 0;
+      int[] orderedBullets = { 0 };
+      double closestBulletDist = 10000;
+
+      for (int i = 0; i < privBullets.length; i++) {
+         Bullet tempBullet = privBullets[i];
+         targetX = tempBullet.getX();
+         targetY = tempBullet.getY();
+         if (ManhattanDistance(targetX, targetY) < closestBulletDist) {
+            secondClosestIndex = bulletIndex;
+            closestBulletDist = ManhattanDistance(targetX, targetY);
+            bulletIndex = i;
+         }
+      }
+      if (counter % 25 == 0) {
+         System.out.println("Closest bullet is at location: " +
+               privBullets[bulletIndex].getX() + ", " + privBullets[bulletIndex].getX());
+
+         System.out.println("Second bullet is at location: " +
+               privBullets[secondClosestIndex].getX() + ", " + privBullets[secondClosestIndex].getX());
+      }
+
+      if (privBullets.length > 1) {
+         orderedBullets = new int[] { bulletIndex, secondClosestIndex };
+      } else {
+         orderedBullets = new int[] { bulletIndex };
+      }
+      return orderedBullets;
+   }
+
+   // moves to a point, prioritizing x/y in a way that moves as a diagonal
+   // -------------------ALL GOOD----------------
+   private static int MoveTo(BotInfo me, double targetX, double targetY) {
+
+      if (Math.abs(currentX - targetX) > Math.abs(currentY - targetY)) {
+         if (currentX < targetX) {
+            return BattleBotArena.RIGHT;
+         } else if (currentX > targetX) {
+            return BattleBotArena.LEFT;
+         }
+      } else {
+         if (currentY < targetY) {
+            return BattleBotArena.DOWN;
+         } else {
+            return BattleBotArena.UP;
+         }
+      }
+      return 0;
+   }
+
+   // -------------------ALL GOOD----------------
+   private static int TargetBotIndex(BotInfo[] liveBots) {
+      int botIndex = 0;
+      closestDist = 1000;
+      for (int i = 0; i < liveBots.length; i++) {
+         BotInfo bot = liveBots[i];
+         targetX = (int) bot.getX();
+         targetY = (int) bot.getY();
+         if (ManhattanDistance(targetX, targetY) < closestDist) {
+            closestDist = ManhattanDistance(targetX, targetY);
+            botIndex = i;
+         }
+      }
+      // System.out.println("Targeted bot is: " + liveBots[botIndex].getName());
+      return botIndex;
+   }
+
+   // -------------------ALL GOOD----------------
+   private boolean InMyDirection() {
+      int padding = 20;
+
+      // if aligned X
+      if (Math.abs(currentX - closestBullet.getX()) < Bot.RADIUS + padding) {
+         // if moving in y direction
+         if (closestBullet.getYSpeed() != 0) {
+            // if above and bullet moving up
+            if (currentY < closestBullet.getY() && closestBullet.getYSpeed() < 0) {
+               return true;
+            }
+            // if below and bullet moving down
+            else if (currentY > closestBullet.getY() && closestBullet.getYSpeed() > 0) {
+               return true;
+            }
+         }
+      }
+
+      // if aligned Y
+      if (Math.abs(currentY - closestBullet.getY()) < Bot.RADIUS + padding) {
+         // if moving in x direction
+         if (closestBullet.getXSpeed() != 0) {
+            // if left and bullet moving left
+            if (currentX < closestBullet.getX() && closestBullet.getXSpeed() < 0) {
+               return true;
+            }
+            // if right and bullet moving right
+            else if (currentX > closestBullet.getX() && closestBullet.getXSpeed() > 0) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   /**
+    * Construct and return my name
+    * 
+    */
+   public String getName() {
+      if (name == null)
+         name = "gregorAI";
+      return name;
+   }
+
+   /**
+    * Team Arena!
+    */
+   public String getTeamName() {
+      return "Arena";
+   }
+
+   /**
+    * Set value for the start of each round
+    */
+   public void newRound() {
+      currentImage = down;
+      // this is a good place to do things like:
+      // - reset any custom counters or list
+      // - set a starting direction and image
+   }
+
+   /**
+    * Image names
+    */
+   public String[] imageNames() {
+      String[] images = { "dangerBotIcon.png", "gregorBotFront.png", "gregorBotLeft.png", "gregorBotRight.png", };
+      return images;
+   }
+
+   /**
+    * Store the loaded images
+    */
+   public void loadedImages(Image[] images) {
+      if (images != null) {
+         currentImage = up = images[0];
+         down = images[1];
+         left = images[2];
+         right = images[3];
+      }
+   }
+
+   /**
+    * Send my next message and clear out my message buffer
+    */
+   public String outgoingMessage() {
+      String msg = nextMessage;
+      nextMessage = null;
+      return msg;
+   }
+
+   /**
+    * Required abstract method
+    */
+   public void incomingMessage(int botNum, String msg) {
+
+   }
+
+}

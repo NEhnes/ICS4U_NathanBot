@@ -1,0 +1,359 @@
+package bots;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Image;
+
+import arena.BattleBotArena;
+import arena.BotInfo;
+import arena.Bullet;
+
+/**
+ * Name: Deo Narayan
+ * Date: March 26, 2020
+ * Isatard's strategy can be divided into three sections listed in descending order of priority. The primary objective
+ * is to fire at bots if they are aligned. Depending on whether the bot is aligned vertically or horizontally and which 
+ * side, Isatard will shoot in the direction of the bot. Isatard's fire also has a cooldown time, as to not waste all 4 
+ * bullets at once. Isatard is also programmed to avoid bullets by checking if it is aligned with nearby bullets. If 
+ * this is the case, Isatard will move to avoid colliding with the closest bullet in the most effective direction. It
+ * does so by checking its proximity to the border, as well as seeing which side of Isatard's center the bullet is. 
+ * Finally, if Isatard is not aligned with live bots nor bullets, it will either descend towards the bottom right corner
+ * or ascend to the top left corner. Should Isatard get stuck, it will switch directions. Ideally, Isatard will
+ * accumulate many points from both the time stayed alive and from shooting other bots. Isatard also does not use
+ * excessive processing time nor does it produce errors as to maximize the points it receives.
+ */
+
+// Base Bot class used to build your own bot
+
+/**
+ * Useful commands
+ * BattleBotArena.SEND_MESSAGE; Sends a message from the message array
+ * BattleBotArena.UP,BattleBotArena.DOWN,BattleBotArena.LEFT,BattleBotArena.RIGHT Makes the bot move in a direction
+ * BattleBotArena.FIREUP,BattleBotArena.FIREDOWN,BattleBotArena.FIRERIGHT,BattleBotArena.FIRELEFT
+ * current is a variable that stores the current image being drawn.
+ * set current to left, right, down or up to change directional image to be drawn.
+ **/
+public class DeoBot extends Bot {
+  /**
+   *My name
+   */
+  String name;
+  
+  /**
+   * My next message or null if nothing to say
+   */
+  String nextMessage = null;
+  
+  /**
+   * Array of happy drone messages
+   */
+  private String[] messages = {"I am moving left", "I am moving right", "I am moving up", "I am moving down", "BACK OFF"};
+  
+  /**
+   * Image for drawing
+   */
+  Image up, down, left, right, current;
+  
+  //for deciding if direction change is needed
+  int stuckCounter;
+  
+  //for deciding if safe to move
+  
+  //cooldown time after firing
+  int botFireCoolDown;
+  
+  //which directions to move
+  Boolean bottomRight;
+  
+  //indicate where in bullet class (index) closest bullet is
+  int closestBullet;
+  
+  //comparing manhattan distances of bullets to isatard
+  int closestDistance;
+  double newDistance;
+  
+  /**
+   * Current move
+   */
+  private int move = BattleBotArena.DOWN;
+  
+  /**
+   * My last location - used for detecting when I am stuck
+   */
+  private double x, y;
+  
+  /**
+   * Draw the current Bot image
+   */
+  public void draw(Graphics g, int x, int y) {
+    g.drawImage(current, x, y, Bot.RADIUS*2, Bot.RADIUS*2, null);
+  }
+  
+  /**
+   * controls movement, messages, and firing
+   */
+  public int getMove(BotInfo me, boolean shotOK, BotInfo[] liveBots, BotInfo[] deadBots, Bullet[] bullets) {
+    
+    //counters increase every tick
+    stuckCounter++;
+    botFireCoolDown++;
+    
+    //search through liveBot list
+    for (int i=0; i < liveBots.length; i++)
+    {
+      //see if we are aligned vertically
+      if (Math.abs(me.getX()-liveBots[i].getX()) < Bot.RADIUS)
+      {
+        //if has not fired recently
+        if (botFireCoolDown > 20)
+        {
+          //if isatard is below the bot  
+          if (me.getY() >liveBots[i].getY())
+          {
+            //restart fire cooldown
+            botFireCoolDown = 0;
+            
+            //fire up
+            return BattleBotArena.FIREUP;
+          }
+          else
+          {
+            botFireCoolDown = 0;
+            return BattleBotArena.FIREDOWN;
+          }
+        }
+      }
+      
+      //see if we are aligned horizontally
+      if (Math.abs(me.getY()-liveBots[i].getY()) < Bot.RADIUS)
+      {
+        if (botFireCoolDown > 20)
+        {
+          if (me.getX() > liveBots[i].getX())
+          {
+            botFireCoolDown = 0;
+            return BattleBotArena.FIRELEFT;
+          }
+          else
+          {
+            botFireCoolDown = 0;
+            return BattleBotArena.FIRERIGHT;
+          }
+        }
+      }
+    }
+    
+    //resets every timer tick
+    closestDistance = 50;
+    
+    //search through bullet list
+    for (int i=0; i < bullets.length; i++)
+    {
+      //determine proximity of bullet relative to isatard
+      newDistance = Math.abs(me.getX()+Bot.RADIUS-bullets[i].getX())+Math.abs(me.getY()+Bot.RADIUS-bullets[i].getY());
+      
+      //check if bullet is closest bullet to isatard
+      if (newDistance < closestDistance)
+      {
+        //becomes closest bullet
+        closestDistance = (int)newDistance;
+        //note index
+        closestBullet = i;
+      }
+    }
+    
+      //if less than 50
+      if (closestDistance < 50)
+      {
+        //see if we are aligned vertically
+        if (Math.abs((me.getY()+ Bot.RADIUS) -bullets[closestBullet].getY()) < Bot.RADIUS + 4)
+        {
+          //if bullet is on my bottom half or to close to bottom border
+          if (me.getY() + Bot.RADIUS < bullets[closestBullet].getY() && me.getY() > 10 + Bot.RADIUS*3 || me.getY() + Bot.RADIUS*2 > 500)
+          {
+            //move up
+            return BattleBotArena.UP;
+          }
+          else 
+          {
+            return BattleBotArena.DOWN;
+          }
+        }
+        
+        //see if we are aligned horizontally
+        if (Math.abs((me.getX()+Bot.RADIUS)-bullets[closestBullet].getX()) < Bot.RADIUS + 4)
+        {
+          //if bullet is on my right half or to close to right border
+          if (me.getX() + Bot.RADIUS < bullets[closestBullet].getX() && me.getX() > Bot.RADIUS*3 || me.getX() + Bot.RADIUS*2 > 700)
+          {
+            return BattleBotArena.LEFT;
+          }
+          else 
+          {
+            return BattleBotArena.RIGHT;
+          }
+        }
+      }
+    
+    
+    //if not moving for extended period of time, switch direction
+    if (stuckCounter>50 && x == me.getX() && y == me.getY())
+    {
+      bottomRight = !bottomRight;
+    }
+   
+    //moving down and right
+    if (bottomRight == true)
+    {
+      if (Math.random() < 0.5)
+      {
+        move = BattleBotArena.DOWN;
+      }
+      else 
+      {
+        move =BattleBotArena.RIGHT;
+      }
+    }
+    
+    //moving up and left
+    if (bottomRight == false)
+    {
+      if (Math.random() < 0.5)
+      {
+        move = BattleBotArena.UP;
+      }
+      else 
+      {
+        move =BattleBotArena.LEFT;
+      }
+    }
+    
+    //store current location
+    if (stuckCounter > 51)
+    {
+      x = me.getX();
+      y = me.getY();
+    }
+    
+    // occasional messages and only when not in danger
+    if (Math.random() < 0.001)
+    {
+      //switches direction
+      bottomRight = !bottomRight;
+      
+      //searches through all live bots
+      for (int i=0; i<liveBots.length; i++)
+      {
+        // compute the Manhattan distance to the Bot
+        double d = Math.abs(me.getX()-liveBots[i].getX())+Math.abs(me.getY()-liveBots[i].getY());
+        if (d < 50) // warn if within 50 pixels
+        {
+          //sends message to back off
+          nextMessage = messages[4]+" "+liveBots[i].getName()+".";
+          return BattleBotArena.SEND_MESSAGE;
+        }
+      }
+      
+      //sends message saying that moving in opposite direction
+      if (move ==  BattleBotArena.RIGHT)
+      {
+        nextMessage = messages[0];
+        return BattleBotArena.SEND_MESSAGE;
+      }
+      if (move ==  BattleBotArena.LEFT)
+      {
+        nextMessage = messages[1];
+        return BattleBotArena.SEND_MESSAGE;
+      }
+      if (move ==  BattleBotArena.UP)
+      {
+        nextMessage = messages[3];
+        return BattleBotArena.SEND_MESSAGE;
+      }
+      if (move ==  BattleBotArena.DOWN)
+      {
+        nextMessage = messages[2];
+        return BattleBotArena.SEND_MESSAGE;
+      }
+    }
+    
+    // set the image to use for next draw, displays word for opposite direction
+    if (move == BattleBotArena.UP || move == BattleBotArena.FIREUP)
+      current = up;
+    else if (move == BattleBotArena.DOWN || move == BattleBotArena.FIREDOWN)
+      current = down;
+    else if (move == BattleBotArena.LEFT || move == BattleBotArena.FIRELEFT)
+      current = left;
+    else if (move == BattleBotArena.RIGHT || move == BattleBotArena.FIRERIGHT)
+      current = right;
+    return move;
+  }
+  
+  /**
+   * Construct and return my name
+   */
+  public String getName()
+  {
+    if (name == null)
+      name = "isatard";
+    return name;
+  }
+  
+  /**
+   * Team Arena!
+   */
+  public String getTeamName() {
+    return "Arena";
+  }
+  
+  /**
+   * Reset variables at beginning of each round
+   */
+  public void newRound() {
+    stuckCounter = 0;
+    botFireCoolDown = 21;
+    bottomRight = true;
+  }
+  
+  /**
+   * Image names
+   */
+  public String[] imageNames()
+  {
+    String[] images = {"deoLeft.png","deoRight.png","deoUp.png","deoDown.png"};
+    return images;
+  }
+  
+  /**
+   * Store the loaded images
+   */
+  public void loadedImages(Image[] images)
+  {
+    if (images != null)
+    {
+      current = up = images[3];
+      down = images[2];
+      left = images[1];
+      right = images[0];
+    }
+  }
+  
+  /**
+   * Send my next message and clear out my message buffer
+   */
+  public String outgoingMessage()
+  {
+    String msg = nextMessage;
+    nextMessage = null;
+    return msg;
+  }
+  
+  /**
+   * Required abstract method
+   */
+  public void incomingMessage(int botNum, String msg)
+  {
+    
+  }
+}
+

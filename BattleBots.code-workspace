@@ -1,0 +1,28 @@
+{
+	"folders": [
+		{
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/firstProg"
+		},
+		{
+			"name": "TEJ4M Lab 2",
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/TEJ4M Lab 2"
+		},
+		{
+			"name": "physicsEngine",
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/physicsEngine"
+		},
+		{
+			"name": "ServoTest",
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/ServoTest"
+		},
+		{
+			"name": "Wi-Fi_Testing",
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/Wi-Fi_Testing"
+		},
+		{
+			"name": "WI-Fi_AP_Example",
+			"path": "../../OneDrive/Documents/PlatformIO/Projects/WI-Fi_AP_Example"
+		}
+	],
+	"settings": {}
+}

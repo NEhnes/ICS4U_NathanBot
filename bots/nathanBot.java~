@@ -1,0 +1,205 @@
+package bots;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Image;
+
+import arena.BattleBotArena;
+import arena.BotInfo;
+import arena.Bullet;
+//
+// Base Bot class used to build your own bot
+
+/**
+ * Usefull commands
+ * BattleBotArena.SEND_MESSAGE; Sends a message from the message array
+ * BattleBotArena.UP,BattleBotArena.DOWN,BattleBotArena.LEFT,BattleBotArena.RIGHT Makes the bot move in a direction
+ * BattleBotArena.FIREUP,BattleBotArena.FIREDOWN,BattleBotArena.FIRERIGHT,BattleBotArena.FIRELEFT
+ * current is a variable that stores the current image being drawn.
+ * set current to left, right, down or up to change directional image to be drawn.
+ **/
+public class baseBot extends Bot {
+   /**
+    *My name
+    */
+   String name;
+   
+   /**
+    * My next message or null if nothing to say
+    */
+   String nextMessage = null;
+   
+   /**
+    * Array of happy drone messages
+    */
+   private String[] messages = {"I am a drone", "Working makes me happy", "I am content", "I like to vaccuum", "La la la la la...", "I like squares"};
+   
+   /**
+    * Image for drawing
+    */
+   Image up, down, left, right, currentImage;
+   
+   /**
+    * For deciding when it is time to change direction
+    */
+   private int counter = 50;
+   
+   /**
+    * Current move
+    */
+   private int move = BattleBotArena.UP;
+   
+   /**
+    * My last location - used for detecting when I am stuck
+    */
+   private double x, y;
+   
+   /**
+    * Draw the current Bot image
+    */
+   public void draw(Graphics g, int x, int y) {
+      g.drawImage(currentImage, x, y, Bot.RADIUS*2, Bot.RADIUS*2, null);
+   }
+   
+   
+   
+   /*******************************************************************************
+    *********          controls movement, messages, and firing          ***********
+    *******************************************************************************/
+   
+   public int getMove(BotInfo me, boolean shotOK, BotInfo[] liveBots, BotInfo[] deadBots, Bullet[] bullets) {
+      
+      // Decrease the counter. It is used to decide whether it is time to move or fire
+      counter--;
+      
+      //
+      // 1. MESSAGES - send our random message 2% of the time, (do not check for further options)
+      //      
+      if (Math.random() < 0.02)
+      {
+         nextMessage = messages[(int)(Math.random()*messages.length)];
+         return BattleBotArena.SEND_MESSAGE;
+      }
+      
+      
+      //
+      // 2. FIRE - Fire every 25 frames if a shot is available, (do not check for further options)
+      //      
+      if (counter % 25 == 0 && shotOK)
+      {
+         if (move == BattleBotArena.UP){ return BattleBotArena.FIREUP; }
+         else if (move == BattleBotArena.DOWN) { return BattleBotArena.FIREDOWN; }
+         else if (move == BattleBotArena.LEFT) { return BattleBotArena.FIRELEFT; }
+         else if (move == BattleBotArena.RIGHT){ return BattleBotArena.FIRERIGHT; }
+      }
+
+      //
+      // 3. MOVE - set next move if stuck or if counter has reached 0, and update image as appropriate
+      //
+      if (counter == 0 || (me.getX() == x && me.getY() == y))
+      {
+         if (move == BattleBotArena.UP)
+         {
+            currentImage = left;
+            move = BattleBotArena.LEFT;
+         }
+         else if (move == BattleBotArena.LEFT)
+         {
+            currentImage = down;
+            move = BattleBotArena.DOWN;
+         }
+         else if (move == BattleBotArena.DOWN)
+         {
+            currentImage = right;
+            move = BattleBotArena.RIGHT;
+         }
+         else if (move == BattleBotArena.RIGHT)
+         {
+            currentImage =up;
+            move = BattleBotArena.UP;
+         }
+         
+         counter = 50+(int)(Math.random()*100);
+      }
+      
+      // update my record of my most recent position
+      x = me.getX();
+      y = me.getY();
+      
+      // will move in the direction set above or if no change was made will
+      // continue in the same direction as last move
+      return move;    
+   }
+   
+   
+   
+   /**
+    * Construct and return my name
+    * 
+    */
+   public String getName()
+   {
+      if (name == null)
+         name = "ME";
+      return name;
+   }
+   
+   /**
+    * Team Arena!
+    */
+   public String getTeamName() {
+      return "Arena";
+   }
+   
+   /**
+    * Set value for the start of each round
+    */
+   public void newRound() {
+      // this is a good place to do things like:
+      // - reset any custom counters or list
+      // - set a starting direction and image
+     
+   }
+   
+   /**
+    * Image names
+    */
+   public String[] imageNames()
+   {
+      String[] images = {"roomba_up.png","roomba_down.png","roomba_left.png","roomba_right.png"};
+      return images;
+   }
+   
+   /**
+    * Store the loaded images
+    */
+   public void loadedImages(Image[] images)
+   {
+      if (images != null)
+      {
+         currentImage = up = images[0];
+         down = images[1];
+         left = images[2];
+         right = images[3];
+      }
+   }
+   
+   /**
+    * Send my next message and clear out my message buffer
+    */
+   public String outgoingMessage()
+   {
+      String msg = nextMessage;
+      nextMessage = null;
+      return msg;
+   }
+   
+   /**
+    * Required abstract method
+    */
+   public void incomingMessage(int botNum, String msg)
+   {
+      
+   }
+   
+}
