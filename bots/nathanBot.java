@@ -52,7 +52,7 @@ public class nathanBot extends Bot {
    private static Bullet[] privBullets; // leave as global
    private static Bullet closestBullet; // leave as global
    private static double closestDist = 1000; // leave as global, for time being
-   private static boolean attackMode = false;
+   private static boolean attackEnabled = false;
    private static int attackTicks = 0;
    private static boolean attackDir;
    private static int attackDuration = 35;
@@ -106,6 +106,18 @@ public class nathanBot extends Bot {
     * checkmove to avoid running into bullets
     * check if bot within 30px in l,r,u,d
     * check if bullet within 50px l,r,u,d
+
+
+      FOR SURVIVAL MODE:
+      - update me
+      - update bullet array
+      - survivalmode logic
+      - dodgesequence
+      
+      - move to target location - safe from at leats one bot
+            - can make xGap and yGap smaller
+      
+
     */
 
    /*******************************************************************************
@@ -113,6 +125,8 @@ public class nathanBot extends Bot {
     *******************************************************************************/
 
    // _______________ADD BORDER / DEAD BOT AVOIDANCE______________
+   // __________IF # of live bots > 8, SURVIVAL MODE_______
+   // _______else, enable attacking__________
    public int getMove(BotInfo me, boolean shotOK, BotInfo[] liveBots, BotInfo[] deadBots, Bullet[] bullets) {
 
       // update my position
@@ -122,8 +136,13 @@ public class nathanBot extends Bot {
       // update bullet array - my own array so I dont have to pass it around
       privBullets = bullets;
 
-      // runs if necessary - comment later   //REMOVE ! ATTACKMODE
-      if (!attackMode) {
+      // disable survival mode - working
+      if (liveBots.length <= 8){
+         //enable attack
+      }
+
+      // doesn't dodge during attackEnabled --- adjust later so that xdirection is static in attackEnabled, y still oddges though
+      if (!attackEnabled) {
          move = DodgeSequence();
          if (move != 0) {
             RunCounters();
@@ -140,7 +159,7 @@ public class nathanBot extends Bot {
       // end attack if is over
       if (attackTicks > attackDuration - 1) {
          attackTicks = 0;
-         attackMode = false;
+         attackEnabled = false;
       }
 
       // continue attack sequence, returns 0 if conditions not met
@@ -158,13 +177,6 @@ public class nathanBot extends Bot {
          return move;
       }
 
-      System.out.println(attackTicks);
-      if (attackMode) {
-         System.out.println("ATTACKMODE");
-      } else {
-         System.out.println("waiting...");
-      }
-
       // sets target attack position, on a diagonal to target bot
       int xTargetingGap = 30;
       int yTargetingGap = 95;
@@ -172,18 +184,19 @@ public class nathanBot extends Bot {
       targetY += (targetY > currentY) ? -yTargetingGap : yTargetingGap;
 
       // check if in attack position, commence attack
-      if (!attackMode) { // does not run if attack is in progress
+      if (!attackEnabled) { // does not run if attack is in progress
          int tolerance = 20;
          if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
                && (targetY - tolerance <= currentY && targetY + tolerance >= currentY)) {
-            attackMode = true;
+            attackEnabled = true;
             attackDir = (currentX < targetX) ? false : true;
             attackTicks = 0;
          } else {
-            attackMode = false;
+            attackEnabled = false;
          }
       }
 
+      //if targetX/Y are within radius 20 of deadbot, move above/below it
       move = MoveTo(me, targetX, targetY);
 
       RunCounters();
@@ -197,7 +210,7 @@ public class nathanBot extends Bot {
 
    // ----------all good------------
    private int Attack(boolean shotOK) {
-      if (attackMode == true && attackTicks < attackDuration) {
+      if (attackEnabled == true && attackTicks < attackDuration) {
          attackTicks++;
          // if can shoot
          if (attackTicks > 10 && counter % 10 == 0 && counter != 0 && shotOK) {
@@ -222,9 +235,7 @@ public class nathanBot extends Bot {
 
          // if in danger, move
          if (closestBulletDist <= 80 && InMyDirection() == true) {
-            // System.out.println("DANGER DANGER DANGER");
             // currentImage = up; // danger image
-
             move = DodgeBullet(closestBullet);
             if (move != 0) {
                return move;
@@ -357,13 +368,13 @@ public class nathanBot extends Bot {
             bulletIndex = i;
          }
       }
-      if (counter % 25 == 0) {
-         System.out.println("Closest bullet is at location: " +
-               privBullets[bulletIndex].getX() + ", " + privBullets[bulletIndex].getX());
+      // if (counter % 25 == 0) {
+      //    System.out.println("Closest bullet is at location: " +
+      //          privBullets[bulletIndex].getX() + ", " + privBullets[bulletIndex].getX());
 
-         System.out.println("Second bullet is at location: " +
-               privBullets[secondClosestIndex].getX() + ", " + privBullets[secondClosestIndex].getX());
-      }
+      //    System.out.println("Second bullet is at location: " +
+      //          privBullets[secondClosestIndex].getX() + ", " + privBullets[secondClosestIndex].getX());
+      // }
 
       if (privBullets.length > 1) {
          orderedBullets = new int[] { bulletIndex, secondClosestIndex };
