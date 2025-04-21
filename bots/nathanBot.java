@@ -77,47 +77,32 @@ public class nathanBot extends Bot {
    }
 
    /**
-    * ----Psuedo Logic---- (outdated as fuck)
-    * updateMyPos()
+    * ##### Psuedo Logic #####
     * 
-    * dodgeImmediateDanger()
-    * must be moving in my direction or <___ px away
-    * if so, check proximity to other bullets and move accordingly
-    * return move, end method
+    * - update global copy of my position variables
+    * - update global copy of bullets array
     * 
-    * check if bot within firing scope and shoot
-    *
-    * updateTarget() //(update every ___ ticks) (fewer if close)
-    * determine distribution by quadrant, save pos of nearest one
-    * determine distance to nearest bot in quadrant
-    * combine data and pick a good target
+    * - determine whether in survival mode or not
+    * - when greater than __ bots alive, play it safer
     * 
-    * check if bot is near and within firing scope
-    * firing scope can be linear up close, but fans out at medium distance
-    * maybe only fire if not directly in front < 30px
-    * fire
-    * lead shots???
+    * - dodge any incoming bullets
+    * - does not run if midway through attack --> can change in dodge func. later
+    * - interferes
     * 
-    * check if bot <___ pixels away
-    * if yes, commence attack sequence
-    * if no, manage distance and wait for SHOTOK
-    * check shot dist?
-    * set movement direction towards target at diagonal
-    * checkmove to avoid running into bullets
-    * check if bot within 30px in l,r,u,d
-    * check if bullet within 50px l,r,u,d
-
-
-      FOR SURVIVAL MODE:
-      - update me
-      - update bullet array
-      - survivalmode logic
-      - dodgesequence
-      
-      - move to target location - safe from at leats one bot
-            - can make xGap and yGap smaller
-      
-
+    * - update the target bot
+    * 
+    * - run attacking stuff
+    * - end if over
+    * - continue attack in progress
+    * 
+    * - checks if bot is aligned for an opportunistic kill
+    * 
+    * - adjusts target position relative to target bot
+    * - in preparation for attack
+    * 
+    * - checks whether conditions are met to commence an attack
+    * 
+    * - if nothing else was already returned, move towards target bot
     */
 
    /*******************************************************************************
@@ -137,11 +122,12 @@ public class nathanBot extends Bot {
       privBullets = bullets;
 
       // disable survival mode - working
-      if (liveBots.length <= 8){
-         //enable attack
+      if (liveBots.length <= 8) {
+         // enable attack
       }
 
-      // doesn't dodge during attackEnabled --- adjust later so that xdirection is static in attackEnabled, y still oddges though
+      // doesn't dodge during attackEnabled --- adjust later so that xdirection is
+      // static in attackEnabled, y still oddges though
       if (!attackEnabled) {
          move = DodgeSequence();
          if (move != 0) {
@@ -186,6 +172,7 @@ public class nathanBot extends Bot {
       // check if in attack position, commence attack
       if (!attackEnabled) { // does not run if attack is in progress
          int tolerance = 20;
+         // if in the correct attack position, ± 20px tolerance
          if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
                && (targetY - tolerance <= currentY && targetY + tolerance >= currentY)) {
             attackEnabled = true;
@@ -196,8 +183,15 @@ public class nathanBot extends Bot {
          }
       }
 
-      //if targetX/Y are within radius 20 of deadbot, move above/below it
       move = MoveTo(me, targetX, targetY);
+
+      int backupMove = move;
+
+      move = AvoidDeadBots(move, deadBots);
+
+      if(move == 0){
+         move = backupMove;
+      }
 
       RunCounters();
       return move;
@@ -207,6 +201,50 @@ public class nathanBot extends Bot {
    // ***********---LOGIC---END---********************
    // ***********--FUNCS---BELOW--********************
    // ************************************************
+
+   // targets are global
+   private int CheckMove(int move) {
+
+      // possible/impossible boolean
+      // if is in border
+      // if is in dead bot --> might not need if AvoidDeadBots gets working
+      // move somewhere else
+      return 0;
+   }
+
+   // targetX, targetY are global
+   private int AvoidDeadBots(int move, BotInfo[] deadBots) {
+
+      
+      //find closest dead bot index
+      if (deadBots.length != 0) {
+         int botIndex = 0;
+         closestDist = 1000;
+         for (int i = 0; i < deadBots.length; i++) {
+            BotInfo bot = deadBots[i];
+            targetX = (int) bot.getX();
+            targetY = (int) bot.getY();
+            if (ManhattanDistance(targetX, targetY) < closestDist) {
+               closestDist = ManhattanDistance(targetX, targetY);
+               botIndex = i;
+            }
+         }
+         System.out.println("closestDeadBot: " + deadBots[botIndex].getName());
+
+         double deadBotX = deadBots[botIndex].getX();
+         double deadBotY = deadBots[botIndex].getY();
+
+         if (closestDist < 50){
+            return (targetY < currentY) ? BattleBotArena.UP : BattleBotArena.DOWN;
+         }
+      }
+      
+
+      // if targetX, targetY falls within dead bot radius
+      // change target position to
+
+      return 0;
+   }
 
    // ----------all good------------
    private int Attack(boolean shotOK) {
@@ -368,13 +406,6 @@ public class nathanBot extends Bot {
             bulletIndex = i;
          }
       }
-      // if (counter % 25 == 0) {
-      //    System.out.println("Closest bullet is at location: " +
-      //          privBullets[bulletIndex].getX() + ", " + privBullets[bulletIndex].getX());
-
-      //    System.out.println("Second bullet is at location: " +
-      //          privBullets[secondClosestIndex].getX() + ", " + privBullets[secondClosestIndex].getX());
-      // }
 
       if (privBullets.length > 1) {
          orderedBullets = new int[] { bulletIndex, secondClosestIndex };
