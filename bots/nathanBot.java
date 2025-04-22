@@ -171,10 +171,10 @@ public class nathanBot extends Bot {
 
       // check if in attack position, commence attack
       if (!attackEnabled) { // does not run if attack is in progress
-         int tolerance = 20;
+         int tolerance = 40;
          // if in the correct attack position, ± 20px tolerance
          if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
-               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY)) {
+               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY) && shotOK && lastShotTicks < 40) {
             attackEnabled = true;
             attackDir = (currentX < targetX) ? false : true;
             attackTicks = 0;
@@ -184,6 +184,14 @@ public class nathanBot extends Bot {
       }
 
       move = MoveTo(me, targetX, targetY);
+
+      int backupMove = move;
+
+      move = AvoidDeadBots(move, deadBots);
+
+      if(move == 0){
+         move = backupMove;
+      }
 
       RunCounters();
       return move;
