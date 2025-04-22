@@ -185,14 +185,6 @@ public class nathanBot extends Bot {
 
       move = MoveTo(me, targetX, targetY);
 
-      int backupMove = move;
-
-      move = AvoidDeadBots(move, deadBots);
-
-      if(move == 0){
-         move = backupMove;
-      }
-
       RunCounters();
       return move;
    }
