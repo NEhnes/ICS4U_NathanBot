@@ -20,7 +20,7 @@ import arena.Bullet;
  * set current to left, right, down or up to change directional image to be
  * drawn.
  **/
-public class nathanBot extends Bot {
+public class NathanBot extends Bot {
    /**
     * My name
     */
@@ -40,7 +40,7 @@ public class nathanBot extends Bot {
    /**
     * Image for drawing
     */
-   Image up, down, left, right, currentImage;
+   Image danger, down, left, right, currentImage, angry;
 
    /**
     * For deciding when it is time to change direction
@@ -174,7 +174,8 @@ public class nathanBot extends Bot {
          int tolerance = 40;
          // if in the correct attack position, ± 20px tolerance
          if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
-               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY) && shotOK && lastShotTicks < 40) {
+               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY) && shotOK
+               && lastShotTicks < 40) {
             attackEnabled = true;
             attackDir = (currentX < targetX) ? false : true;
             attackTicks = 0;
@@ -187,10 +188,17 @@ public class nathanBot extends Bot {
 
       int backupMove = move;
 
-      move = AvoidDeadBots(move, deadBots);
+      move = AvoidDeadBots(move, deadBots); // checks to avoid dead bot - can be better
 
-      if(move == 0){
+      if (move == 0) {
          move = backupMove;
+      }
+
+      if (counter % 95 == 0) {
+         nextMessage = (Math.random() < 0.5) ? messages[0] : messages[1];
+
+         RunCounters();
+         return BattleBotArena.SEND_MESSAGE;
       }
 
       RunCounters();
@@ -215,8 +223,7 @@ public class nathanBot extends Bot {
    // targetX, targetY are global
    private int AvoidDeadBots(int move, BotInfo[] deadBots) {
 
-      
-      //find closest dead bot index
+      // find closest dead bot index
       if (deadBots.length != 0) {
          int botIndex = 0;
          closestDist = 1000;
@@ -234,11 +241,10 @@ public class nathanBot extends Bot {
          double deadBotX = deadBots[botIndex].getX();
          double deadBotY = deadBots[botIndex].getY();
 
-         if (closestDist < 50){
+         if (closestDist < 50) {
             return (targetY < currentY) ? BattleBotArena.UP : BattleBotArena.DOWN;
          }
       }
-      
 
       // if targetX, targetY falls within dead bot radius
       // change target position to
@@ -358,6 +364,9 @@ public class nathanBot extends Bot {
          case 3 -> currentImage = left;
          case 4 -> currentImage = right;
          default -> currentImage = down;
+      }
+      if (attackEnabled){
+         currentImage = angry;
       }
 
       counter++;
@@ -519,7 +528,7 @@ public class nathanBot extends Bot {
     * Image names
     */
    public String[] imageNames() {
-      String[] images = { "dangerBotIcon.png", "gregorBotFront.png", "gregorBotLeft.png", "gregorBotRight.png", };
+      String[] images = { "dangerBotIcon.png", "gregorBotFront.png", "gregorBotLeft.png", "gregorBotRight.png", "angryGregorBot.png"};
       return images;
    }
 
@@ -528,10 +537,11 @@ public class nathanBot extends Bot {
     */
    public void loadedImages(Image[] images) {
       if (images != null) {
-         currentImage = up = images[0];
+         currentImage = danger = images[0];
          down = images[1];
          left = images[2];
          right = images[3];
+         angry = images[4];
       }
    }
 
