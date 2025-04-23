@@ -272,7 +272,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
    /**
     * Round time, in seconds
     */
-   public static final int  TIME_LIMIT = 40;
+   public static final int  TIME_LIMIT = 160;
    /**
     * TIME_LIMIT / SECS_PER_MSG = Number of messages allowed per round
     */
@@ -593,23 +593,23 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
       // *** as the bots will be shuffled again later.
       // *** Any empty spots will be filled with standard arena bots.
       
-      bots[0] = new nathanBot();  // default Bot  
+      // bots[0] = new nathanBot();  // default Bot  
       // bots[2] = new theoBot();  // Mr. T's very simple bot
-      // bots[3] = new DeoBot();  //deo's bot
-      // bots[4] = new CreedBot();  // creed
+      bots[5] = new DeoBot();  //deo's bot
+      // bots[1] = new AyushBot();  // creed
       // bots[5] = new SentryBot();  
 
-      for (int i = 1; i < 4; i++){
+      for (int i = 1; i < 5; i++){
          if (bots[i] == null){
-            bots[i] = new DeoBot();
+            bots[i] = new nathanBot();
          }
       }
 
-      // for (int i = 9; i < 17; i++){
-      //    if (bots[i] == null){
-      //       bots[i] = new CreedBot();
-      //    }
-      // }
+      for (int i = 6; i < 10; i++){
+         if (bots[i] == null){
+            bots[i] = new AyushBot();
+         }
+      }
         
       // Remaining slots filled with Drones, and RandBots.
       int c = 1;

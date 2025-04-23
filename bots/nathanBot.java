@@ -293,7 +293,7 @@ public class nathanBot extends Bot {
          if (Math.abs((currentX + Bot.RADIUS) - closestBullet.getX()) < Bot.RADIUS + padding) {
             // System.out.println("X DANGER");
             // if x danger
-            if (closestBullet.getX() > currentX) {
+            if (closestBullet.getX() > currentX || 680 - currentX < 40) {
                return BattleBotArena.LEFT;
             } else {
                return BattleBotArena.RIGHT;
@@ -306,7 +306,7 @@ public class nathanBot extends Bot {
          if (Math.abs((currentY + Bot.RADIUS) - closestBullet.getY()) < Bot.RADIUS + padding) {
             // System.out.println("Y DANGER");
             // if y danger
-            if (closestBullet.getY() > currentY) {
+            if (closestBullet.getY() > currentY || 480 - currentY < 40) {
                return BattleBotArena.UP;
             } else {
                return BattleBotArena.DOWN;
