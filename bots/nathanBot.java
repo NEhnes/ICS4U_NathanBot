@@ -56,6 +56,7 @@ public class NathanBot extends Bot {
    private static int attackTicks = 0;
    private static boolean attackDir;
    private static int attackDuration = 35;
+   private static String targetName = null;
 
    /**
     * Current move
@@ -280,6 +281,7 @@ public class NathanBot extends Bot {
          // if in danger, move
          if (closestBulletDist <= 80 && InMyDirection() == true) {
             // currentImage = up; // danger image
+            currentImage = danger;
             move = DodgeBullet(closestBullet);
             if (move != 0) {
                return move;
@@ -330,7 +332,7 @@ public class NathanBot extends Bot {
          // if aligned vertically
          if (Math.abs(me.getX() - liveBots[i].getX()) < Bot.RADIUS) {
             // if has not fired recently
-            if (lastShotTicks > shootingInterval) {
+            if (lastShotTicks > shootingInterval && targetName != "AyushBot") {
                // if below target
                if (me.getY() > liveBots[i].getY()) {
                   return BattleBotArena.FIREUP;
@@ -357,6 +359,7 @@ public class NathanBot extends Bot {
 
    // -------------------ALL GOOD----------------
    private void RunCounters() { // in a function so that early returns dont skip logic
+      
       // set images
       switch (move) {
          case 1 -> currentImage = down;
@@ -455,6 +458,7 @@ public class NathanBot extends Bot {
          if (ManhattanDistance(targetX, targetY) < closestDist) {
             closestDist = ManhattanDistance(targetX, targetY);
             botIndex = i;
+            targetName = liveBots[i].getName();
          }
       }
       // System.out.println("Targeted bot is: " + liveBots[botIndex].getName());
