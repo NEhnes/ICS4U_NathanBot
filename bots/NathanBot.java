@@ -1,3 +1,9 @@
+/*
+ * THIS IS MY COMPETITION BOT
+ * STILL HAS A FEW BUGS, NOTABLY AN UNRELIABLE ATTACK SEQUENCE
+ * COMMENTS ARE MOSTLY UPDATED, NOT 100% ACCURATE THOUGH -> NO TIME
+ */
+
 package bots;
 
 import java.awt.Color;
@@ -20,7 +26,7 @@ import arena.Bullet;
  * set current to left, right, down or up to change directional image to be
  * drawn.
  **/
-public class NewNathanBot extends Bot {
+public class NathanBot extends Bot {
    /**
     * My name
     */
@@ -51,10 +57,9 @@ public class NewNathanBot extends Bot {
    private static double targetX, targetY = 300; // leave as global
    private static double targetBotX, targetBotY = 300;
    private static Bullet[] privBullets; // leave as global
-   private static double closestDist = 1000; // leave as global, for time being
    private static boolean attackEnabled = false;
    private static int attackTicks = 0;
-   private static boolean attackDir;
+   private static boolean attackingLeft;
    private static int attackDuration = 35;
    private static boolean inDanger = false;
 
@@ -99,17 +104,14 @@ public class NewNathanBot extends Bot {
     * - if nothing else was already returned, move towards target bot
     */
 
-   /*******************************************************************************
+   /*************************************************************
     ********* controls movement, messages, and firing ***********
-    *******************************************************************************/
-
-   // _______________ADD BORDER / DEAD BOT AVOIDANCE______________
-   // __________IF # of live bots > 8, SURVIVAL MODE_______
-   // _______else, enable attacking__________
+    ************************************************************/
    public int getMove(BotInfo me, boolean shotOK, BotInfo[] liveBots, BotInfo[] deadBots, Bullet[] bullets) {
 
+      //debugging - ignore
       if (counter % 95 == 0){
-         System.out.println("attackTicks = " + attackTicks);
+         System.out.println("Current Attack Ticks = " + attackTicks);
       }
 
       // update my position
@@ -119,14 +121,17 @@ public class NewNathanBot extends Bot {
       // update bullet array - my own array so I dont have to pass it around
       privBullets = bullets;
 
-      // disable survival mode -> working -> does nothing
-      if (liveBots.length <= 8) {
-         // DISABLE SURVIVAL MODE -> not implemented yet
-      }
-
       // handles all dodging logic
       move = DodgeSequence();
       if (move != 0) {
+         RunCounters();
+         return move;
+      }
+
+      // checks if another bot is aligned in x/y lines
+      move = CheckForShot(me, liveBots);
+      if (move != 0) {
+         lastShotTicks = 0;
          RunCounters();
          return move;
       }
@@ -137,6 +142,8 @@ public class NewNathanBot extends Bot {
       if (counter % 51 == 0){
          System.out.println("targetBotY: " + targetBotY);
          System.out.println("currentY: " + currentY);
+         System.out.println("targetBotX: " + targetBotX);
+         System.out.println("currentX: " + currentX);
       }
 
       // if conditions met, commence attack
@@ -146,14 +153,6 @@ public class NewNathanBot extends Bot {
       move = Attack(shotOK);
       if (move != 0) {
          move = MoveTo(300, 100);
-         RunCounters();
-         return move;
-      }
-
-      // checks if another bot is aligned in x/y lines
-      move = CheckForShot(me, liveBots);
-      if (move != 0) {
-         lastShotTicks = 0;
          RunCounters();
          return move;
       }
@@ -172,6 +171,14 @@ public class NewNathanBot extends Bot {
          move = MoveTo(100, 380);
       }
 
+      if (counter % 50 == 0){
+
+         nextMessage = (Math.random() < 0.5) ? messages [0] : messages [1];
+
+         RunCounters();
+         return BattleBotArena.SEND_MESSAGE;
+      }
+
       RunCounters();
       return move;
    }
@@ -181,10 +188,26 @@ public class NewNathanBot extends Bot {
    // ***********--FUNCS---BELOW--********************
    // ************************************************
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
    // -------------------all good-----------
    private int DodgeSequence() {
       // Only trigger dodge sequence if there are active bullets
-      if (privBullets.length != 0) {
+      if (privBullets.length != 0 && !attackEnabled) {
 
          Bullet closestBullet;
 
@@ -194,7 +217,6 @@ public class NewNathanBot extends Bot {
 
          // if in danger, move
          if (closestBulletDist <= 80 && InMyDirection(closestBullet) == true) {
-            // currentImage = up; // danger image
             move = DodgeBullet(closestBullet);
             inDanger = true;
             if (move != 0) {
@@ -268,12 +290,12 @@ public class NewNathanBot extends Bot {
       int closestBotIndex = GetClosestBot(liveBots);
       // update target bot pos
       targetBotX = liveBots[closestBotIndex].getX();
-      targetX = liveBots[closestBotIndex].getX();
       targetBotY = liveBots[closestBotIndex].getY();
-      targetY = liveBots[closestBotIndex].getY();
       // sets target attack position, on a diagonal to target bot
       int xTargetingGap = 30;
       int yTargetingGap = 90;
+      targetX = liveBots[closestBotIndex].getX();
+      targetY = liveBots[closestBotIndex].getY();
       targetX += (targetX > currentX || currentX < 40) ? -xTargetingGap : xTargetingGap;
       targetY += (targetY > currentY || currentY > 440) ? -yTargetingGap : yTargetingGap;
    }
@@ -281,13 +303,12 @@ public class NewNathanBot extends Bot {
    // -------------------ALL GOOD----------------
    private static int GetClosestBot(BotInfo[] botArray) {
       int botIndex = 0;
-      closestDist = 1000;
+      double closestBotDist = 1000;
       for (int i = 0; i < botArray.length; i++) {
          BotInfo bot = botArray[i];
-         targetX = (int) bot.getX();
-         targetY = (int) bot.getY();
-         if (ManhattanDistance(targetX, targetY) < closestDist) {
-            closestDist = ManhattanDistance(targetX, targetY);
+         double botDistance = ManhattanDistance(bot.getX(), bot.getY());
+         if (botDistance < closestBotDist) {
+            closestBotDist = botDistance;
             botIndex = i;
          }
       }
@@ -300,22 +321,14 @@ public class NewNathanBot extends Bot {
          return true;
       }
 
-      // if in the correct attack position, ± 15px tolerance
+      // if in the correct attack position, ± 10px tolerance
       int tolerance = 10;
 
       boolean okayX = Math.abs(currentX - targetX) < tolerance;
       boolean okayY = Math.abs(currentY - targetY) < tolerance;
 
-      if (counter % 95 == 0) {
-         System.out.println("okayX = " + okayX);
-         System.out.println("okayY = " + okayY);
-         System.out.println("shotOK = " + shotOK);
-         System.out.println("lastShotTicks = " + lastShotTicks);
-         
-      }
-
-      if (okayX && okayY && shotOK && lastShotTicks > 40) {
-         attackDir = (currentX < targetBotX) ? false : true;
+      if (okayX && okayY && shotOK && lastShotTicks > 60) {
+         attackingLeft = (currentX < targetBotX) ? false : true;
          attackTicks = 0;
          return true;
       } else {
@@ -339,7 +352,7 @@ public class NewNathanBot extends Bot {
          }
          // otherwise move
          else {
-            return (attackDir) ? BattleBotArena.LEFT : BattleBotArena.RIGHT;
+            return (attackingLeft) ? BattleBotArena.LEFT : BattleBotArena.RIGHT;
          }
       }
       return 0;
@@ -368,7 +381,7 @@ public class NewNathanBot extends Bot {
 
    // -------------------ALL GOOD----------------
    private int CheckForShot(BotInfo me, BotInfo[] liveBots) {
-      int shootingInterval = 20;
+      int shootingInterval = 10;
       for (int i = 0; i < liveBots.length; i++) {
          // if aligned vertically
          if (Math.abs(me.getX() - liveBots[i].getX()) < Bot.RADIUS) {
