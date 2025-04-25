@@ -272,7 +272,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
    /**
     * Round time, in seconds
     */
-   public static final int  TIME_LIMIT = 160;
+   public static final int  TIME_LIMIT = 40;
    /**
     * TIME_LIMIT / SECS_PER_MSG = Number of messages allowed per round
     */
@@ -607,7 +607,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
 
       for (int i = 6; i < 10; i++){
          if (bots[i] == null){
-            bots[i] = new AyushBot();
+            bots[i] = new DeoBot();
          }
       }
         
@@ -619,7 +619,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
          {
             if (c==1)
             {
-               bots[i] = new Drone();
+               bots[i] = new NathanBot2();
             }
             else if (c==2)
             { 

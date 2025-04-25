@@ -20,7 +20,7 @@ import arena.Bullet;
  * set current to left, right, down or up to change directional image to be
  * drawn.
  **/
-public class NathanBot extends Bot {
+public class NathanBot2 extends Bot {
    /**
     * My name
     */
@@ -40,7 +40,7 @@ public class NathanBot extends Bot {
    /**
     * Image for drawing
     */
-   Image danger, down, left, right, currentImage, angry;
+   Image angry, front, left, right, danger, currentImage;
 
    /**
     * For deciding when it is time to change direction
@@ -56,7 +56,7 @@ public class NathanBot extends Bot {
    private static int attackTicks = 0;
    private static boolean attackDir;
    private static int attackDuration = 35;
-   private static String targetName = null;
+   private static boolean inDanger = false;
 
    /**
     * Current move
@@ -135,6 +135,7 @@ public class NathanBot extends Bot {
             RunCounters();
             return move;
          }
+         inDanger = false;
       }
 
       // retrieves nearest bot
@@ -166,17 +167,16 @@ public class NathanBot extends Bot {
 
       // sets target attack position, on a diagonal to target bot
       int xTargetingGap = 30;
-      int yTargetingGap = 75;
-      targetX += (targetX > currentX) ? -xTargetingGap : xTargetingGap;
-      targetY += (targetY > currentY) ? -yTargetingGap : yTargetingGap;
+      int yTargetingGap = 95;
+      targetX += (targetX > currentX || currentX < 40) ? -xTargetingGap : xTargetingGap;
+      targetY += (targetY > currentY || currentY > 440) ? -yTargetingGap : yTargetingGap;
 
       // check if in attack position, commence attack
       if (!attackEnabled) { // does not run if attack is in progress
          int tolerance = 40;
          // if in the correct attack position, ± 20px tolerance
          if ((targetX - tolerance <= currentX && targetX + tolerance >= currentX)
-               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY) && shotOK
-               && lastShotTicks < 40) {
+               && (targetY - tolerance <= currentY && targetY + tolerance >= currentY) && shotOK && lastShotTicks < 40) {
             attackEnabled = true;
             attackDir = (currentX < targetX) ? false : true;
             attackTicks = 0;
@@ -189,17 +189,14 @@ public class NathanBot extends Bot {
 
       int backupMove = move;
 
-      move = AvoidDeadBots(move, deadBots); // checks to avoid dead bot - can be better
+      move = AvoidDeadBots(move, deadBots);
 
-      if (move == 0) {
+      if(move == 0){
          move = backupMove;
       }
 
-      if (counter % 95 == 0) {
-         nextMessage = (Math.random() < 0.5) ? messages[0] : messages[1];
-
-         RunCounters();
-         return BattleBotArena.SEND_MESSAGE;
+      if (liveBots.length > 10){
+         move = MoveTo(me, 100, 380);
       }
 
       RunCounters();
@@ -211,20 +208,10 @@ public class NathanBot extends Bot {
    // ***********--FUNCS---BELOW--********************
    // ************************************************
 
-   // targets are global
-   private int CheckMove(int move) {
-
-      // possible/impossible boolean
-      // if is in border
-      // if is in dead bot --> might not need if AvoidDeadBots gets working
-      // move somewhere else
-      return 0;
-   }
-
    // targetX, targetY are global
    private int AvoidDeadBots(int move, BotInfo[] deadBots) {
 
-      // find closest dead bot index
+      //find closest dead bot index
       if (deadBots.length != 0) {
          int botIndex = 0;
          closestDist = 1000;
@@ -237,15 +224,13 @@ public class NathanBot extends Bot {
                botIndex = i;
             }
          }
-         System.out.println("closestDeadBot: " + deadBots[botIndex].getName());
+         // System.out.println("closestDeadBot: " + deadBots[botIndex].getName());
 
-         double deadBotX = deadBots[botIndex].getX();
-         double deadBotY = deadBots[botIndex].getY();
-
-         if (closestDist < 50) {
+         if (closestDist < 50){
             return (targetY < currentY) ? BattleBotArena.UP : BattleBotArena.DOWN;
          }
       }
+      
 
       // if targetX, targetY falls within dead bot radius
       // change target position to
@@ -281,8 +266,8 @@ public class NathanBot extends Bot {
          // if in danger, move
          if (closestBulletDist <= 80 && InMyDirection() == true) {
             // currentImage = up; // danger image
-            currentImage = danger;
             move = DodgeBullet(closestBullet);
+            inDanger = true;
             if (move != 0) {
                return move;
             }
@@ -301,7 +286,7 @@ public class NathanBot extends Bot {
          if (Math.abs((currentX + Bot.RADIUS) - closestBullet.getX()) < Bot.RADIUS + padding) {
             // System.out.println("X DANGER");
             // if x danger
-            if (closestBullet.getX() > currentX || 680 - currentX < 40) {
+            if (closestBullet.getX() > currentX) {
                return BattleBotArena.LEFT;
             } else {
                return BattleBotArena.RIGHT;
@@ -314,7 +299,7 @@ public class NathanBot extends Bot {
          if (Math.abs((currentY + Bot.RADIUS) - closestBullet.getY()) < Bot.RADIUS + padding) {
             // System.out.println("Y DANGER");
             // if y danger
-            if (closestBullet.getY() > currentY || 480 - currentY < 40) {
+            if (closestBullet.getY() > currentY) {
                return BattleBotArena.UP;
             } else {
                return BattleBotArena.DOWN;
@@ -332,7 +317,7 @@ public class NathanBot extends Bot {
          // if aligned vertically
          if (Math.abs(me.getX() - liveBots[i].getX()) < Bot.RADIUS) {
             // if has not fired recently
-            if (lastShotTicks > shootingInterval && targetName != "AyushBot") {
+            if (lastShotTicks > shootingInterval) {
                // if below target
                if (me.getY() > liveBots[i].getY()) {
                   return BattleBotArena.FIREUP;
@@ -359,14 +344,16 @@ public class NathanBot extends Bot {
 
    // -------------------ALL GOOD----------------
    private void RunCounters() { // in a function so that early returns dont skip logic
-      
       // set images
       switch (move) {
-         case 1 -> currentImage = down;
-         case 2 -> currentImage = down;
+         case 1 -> currentImage = front;
+         case 2 -> currentImage = front;
          case 3 -> currentImage = left;
          case 4 -> currentImage = right;
-         default -> currentImage = down;
+         default -> currentImage = front;
+      }
+      if (inDanger){
+         currentImage = danger;
       }
       if (attackEnabled){
          currentImage = angry;
@@ -458,7 +445,6 @@ public class NathanBot extends Bot {
          if (ManhattanDistance(targetX, targetY) < closestDist) {
             closestDist = ManhattanDistance(targetX, targetY);
             botIndex = i;
-            targetName = liveBots[i].getName();
          }
       }
       // System.out.println("Targeted bot is: " + liveBots[botIndex].getName());
@@ -507,7 +493,7 @@ public class NathanBot extends Bot {
     */
    public String getName() {
       if (name == null)
-         name = "gregorAI";
+         name = "new_ver";
       return name;
    }
 
@@ -522,7 +508,7 @@ public class NathanBot extends Bot {
     * Set value for the start of each round
     */
    public void newRound() {
-      currentImage = down;
+      currentImage = front;
       // this is a good place to do things like:
       // - reset any custom counters or list
       // - set a starting direction and image
@@ -532,7 +518,7 @@ public class NathanBot extends Bot {
     * Image names
     */
    public String[] imageNames() {
-      String[] images = { "dangerBotIcon.png", "gregorBotFront.png", "gregorBotLeft.png", "gregorBotRight.png", "angryGregorBot.png"};
+      String[] images = { "angryGregorBot.png", "gregorBotFront.png", "gregorBotLeft.png", "gregorBotRight.png", "dangerBotIcon.png"};
       return images;
    }
 
@@ -541,11 +527,11 @@ public class NathanBot extends Bot {
     */
    public void loadedImages(Image[] images) {
       if (images != null) {
-         currentImage = danger = images[0];
-         down = images[1];
+         currentImage = angry = images[0];
+         front = images[1];
          left = images[2];
          right = images[3];
-         angry = images[4];
+         danger = images[4];
       }
    }
 
