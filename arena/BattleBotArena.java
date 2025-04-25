@@ -285,7 +285,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
     * Total number of Bots in round 1 (if you have fewer than this, the rest of the spots
     * in the array will be filled with Drones, RandBots, and Sentries).
     */
-   public static final int  NUM_BOTS = 10; //11 by default, changes depending 
+   public static final int  NUM_BOTS = 17; //11 by default, changes depending 
    /**
     * Number of bullets on screen at once for each bot
     */
@@ -593,19 +593,25 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
       // *** as the bots will be shuffled again later.
       // *** Any empty spots will be filled with standard arena bots.
       
-      // bots[0] = new nathanBot();  // default Bot  
+      // bots[1] = new NathanBot2();  // my v2 
       // bots[2] = new theoBot();  // Mr. T's very simple bot
       // bots[5] = new DeoBot();  //deo's bot
       // bots[1] = new AyushBot();  // creed
       // bots[5] = new SentryBot();  
 
-      for (int i = 1; i < 6; i++){
+      for (int i = 0; i < 4; i++){
          if (bots[i] == null){
-            bots[i] = new NathanBot();
+            bots[i] = new NewNathanBot();
          }
       }
 
-      for (int i = 6; i < 10; i++){
+      for (int i = 4; i < 8; i++){
+         if (bots[i] == null){
+            bots[i] = new AyushBot();
+         }
+      }
+
+      for (int i = 8; i < 12; i++){
          if (bots[i] == null){
             bots[i] = new DeoBot();
          }
@@ -619,7 +625,7 @@ public class BattleBotArena extends JPanel implements MouseListener, MouseWheelL
          {
             if (c==1)
             {
-               bots[i] = new NathanBot2();
+               bots[i] = new theoBot();
             }
             else if (c==2)
             { 
